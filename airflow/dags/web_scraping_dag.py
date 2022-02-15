@@ -1,0 +1,125 @@
+# imports
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from airflow.utils.dates import datetime
+
+from bs4 import BeautifulSoup
+
+# selenium will be used to scrap dynamic content of the webpage source of our data
+from selenium import webdriver
+from webdriver_manager.firefox import GeckoDriverManager
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+import json
+
+
+url= "https://cycling.data.tfl.gov.uk"
+dictionary_file= "links_dictionary.json"
+
+def contents_downloader(dwl):
+    cap = DesiredCapabilities().FIREFOX
+    cap["marionette"] = False
+
+    options = FirefoxOptions()
+    options.add_argument("--headless")
+
+    browser = webdriver.Firefox(capabilities=cap, executable_path=GeckoDriverManager().install(), options=options)
+    browser.get(url)
+
+    # wait until at least a single element of the table exists
+    wait = WebDriverWait(browser, 20)
+    wait.until(EC.presence_of_element_located((By.XPATH, '/html/body/div[2]/table/tbody/tr[1]/td[1]')))
+    content= browser.page_source
+    dwl.xcom.push(key='html_content', value=content) 
+
+def links_extractor(dwl):
+    html_element= dwl.xcom.pull(key='html_content', task_ids='download_contents_task')
+    
+    bsoup= BeautifulSoup(html_element, "html.parser")
+
+    table= bsoup.find('table')
+    tbody= table.find('tbody')
+    folder_name= "usage-stats/"
+    capture_files= False
+    year= 2021
+    filetype= 'csv'
+    extracted_files= {}
+
+    for row in tbody.find_all('tr'):
+        columns= row.find_all('td')
+
+        if capture_files == False:
+            col_values= [col.text.strip() for col in columns]
+
+            if col_values[0] == folder_name:
+                capture_files= True
+                continue
+
+        else:
+            col= columns[0]
+            filename= col.text.strip()
+            
+            if not filename.endswith(f'{year}.{filetype}'):
+                continue
+            
+            # extract the date
+            filename_without_extension= filename.replace(f'.{filetype}', '') 
+            filename_last_date= filename_without_extension.split('-')[-1]
+            extracted_files[filename_last_date]= col.a['href']
+    
+    dwl.xcom.push(key="dictionary", value=extracted_files)
+
+
+def dico_exporter(dwl):
+    links_dictionary= dwl.xcom.pull(key="dictionary", task_ids="extract_links_task")
+    
+    # serialize json 
+    links_json_object = json.dumps(links_dictionary, indent = 4)
+
+    # save into a dico file
+    with open(dictionary_file, 'w', encoding='utf-8') as f:
+        f.write(links_json_object)
+
+
+
+
+default_args = {
+    "owner": "airflow",
+    "start_date": datetime(2021, 1, 1),
+    "depends_on_past": False,
+    "retries": 1
+}
+
+with DAG(
+    dag_id="web_scraping_dag",
+    schedule_interval="@once",
+    # schedule_interval="0 18 * * 1",
+    default_args=default_args,
+    catchup=True,
+    max_active_runs=1,
+    tags=['web', 'scraping', 'links', 'source'],
+) as dag:
+
+    download_web_contents_task = PythonOperator(
+        task_id="download_contents_task",
+        python_callable=contents_downloader
+    )
+
+    extract_links_task = PythonOperator(
+        task_id="extract_links_task",
+        python_callable=links_extractor,
+
+    )
+
+    export_links_task = PythonOperator(
+        task_id="exporter_links_task",
+        python_callable=dico_exporter 
+    )
+
+
+    download_web_contents_task >> extract_links_task >> export_links_task

@@ -45,7 +45,7 @@ x-airflow-common:
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
   # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.2.3}
-  image: airflow-img:latest
+  image: airflow-img:latest # can be replaced by any airflow image that was built from the Dockerfile
   env_file:
     - .env
   # build: .

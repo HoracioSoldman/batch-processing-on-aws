@@ -5,7 +5,7 @@ from airflow.utils.dates import datetime
 
 from bs4 import BeautifulSoup
 
-# selenium will be used to scrap dynamic content of the webpage source of our data
+# selenium will be used to scrap dynamic content of the webpage, our data source of our data
 from selenium import webdriver
 from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
@@ -21,13 +21,17 @@ import json
 url= "https://cycling.data.tfl.gov.uk"
 dictionary_file= "links_dictionary.json"
 
-def contents_downloader(dwl):
+def contents_downloader(**kwargs):
     cap = DesiredCapabilities().FIREFOX
     cap["marionette"] = False
 
     options = FirefoxOptions()
-    options.add_argument("--headless")
-
+    options = webdriver.FirefoxOptions()
+    options.log.level = "TRACE"
+    options.add_argument('--no-sandbox')
+    options.add_argument('--headless')
+    options.add_argument('--disable-gpu')
+    
     browser = webdriver.Firefox(capabilities=cap, executable_path=GeckoDriverManager().install(), options=options)
     browser.get(url)
 
@@ -35,10 +39,13 @@ def contents_downloader(dwl):
     wait = WebDriverWait(browser, 20)
     wait.until(EC.presence_of_element_located((By.XPATH, '/html/body/div[2]/table/tbody/tr[1]/td[1]')))
     content= browser.page_source
-    dwl.xcom.push(key='html_content', value=content) 
+    
+    kwargs['ti'].xcom_push(key='html_content', value=content)
+    
 
-def links_extractor(dwl):
-    html_element= dwl.xcom.pull(key='html_content', task_ids='download_contents_task')
+def links_extractor(**kwargs):
+    task_instance= kwargs['ti']
+    html_element= task_instance.xcom_pull(key='html_content', task_ids='download_contents_task')
     
     bsoup= BeautifulSoup(html_element, "html.parser")
 
@@ -72,11 +79,12 @@ def links_extractor(dwl):
             filename_last_date= filename_without_extension.split('-')[-1]
             extracted_files[filename_last_date]= col.a['href']
     
-    dwl.xcom.push(key="dictionary", value=extracted_files)
+    kwargs['ti'].xcom_push(key="dictionary", value=extracted_files)
 
 
-def dico_exporter(dwl):
-    links_dictionary= dwl.xcom.pull(key="dictionary", task_ids="extract_links_task")
+def dico_exporter(**kwargs):
+    task_instance= kwargs['ti']
+    links_dictionary= task_instance.xcom_pull(key="dictionary", task_ids="extract_links_task")
     
     # serialize json 
     links_json_object = json.dumps(links_dictionary, indent = 4)
@@ -84,7 +92,6 @@ def dico_exporter(dwl):
     # save into a dico file
     with open(dictionary_file, 'w', encoding='utf-8') as f:
         f.write(links_json_object)
-
 
 
 
@@ -107,17 +114,20 @@ with DAG(
 
     download_web_contents_task = PythonOperator(
         task_id="download_contents_task",
+        provide_context=True,
         python_callable=contents_downloader
     )
 
     extract_links_task = PythonOperator(
         task_id="extract_links_task",
+        provide_context=True,
         python_callable=links_extractor,
 
     )
 
     export_links_task = PythonOperator(
         task_id="exporter_links_task",
+        provide_context=True,
         python_callable=dico_exporter 
     )
 

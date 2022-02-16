@@ -64,8 +64,7 @@ default_args = {
 
 with DAG(
     dag_id="s3_ingestion_dag",
-    schedule_interval="@once", 
-    # schedule_interval="55 23 * * 2",  # run this dag every Tuesday at 11:55pm
+    schedule_interval="55 23 * * 2",  # run this dag every Tuesday at 11:55pm
     max_active_runs=1,
     catchup=True,
     tags=['s3', 'aws', 'ingestion', 'cycling'],

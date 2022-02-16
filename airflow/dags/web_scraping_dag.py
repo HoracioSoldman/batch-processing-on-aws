@@ -74,7 +74,7 @@ def links_extractor(**kwargs):
             if not filename.endswith(f'{year}.{filetype}'):
                 continue
             
-            # extract the date
+            # extract the date (e.g 257JourneyDataExtract17Mar2021-23Mar2021.csv --> 23Mar2021)
             filename_without_extension= filename.replace(f'.{filetype}', '') 
             filename_last_date= filename_without_extension.split('-')[-1]
             extracted_files[filename_last_date]= col.a['href']
@@ -95,17 +95,22 @@ def dico_exporter(**kwargs):
 
 
 
+''' 
+    TODO: Set the start date of the dag to the last Tuesday,
+        this way the dag will run only once before its next running schedule 
+        defined by the schedule_interval
+        e.g Today is Wed 16th February 2022, the start is datetime(2022, 1, 15)
+'''
 default_args = {
     "owner": "airflow",
-    "start_date": datetime(2021, 1, 1),
+    "start_date": datetime(2022, 1, 15), 
     "depends_on_past": False,
     "retries": 1
 }
 
 with DAG(
     dag_id="web_scraping_dag",
-    schedule_interval="@once",
-    # schedule_interval="0 18 * * 1",
+    schedule_interval="50 23 * * 2", # every Tuesday at 11:50pm
     default_args=default_args,
     catchup=True,
     max_active_runs=1,

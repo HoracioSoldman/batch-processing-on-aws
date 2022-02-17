@@ -96,14 +96,14 @@ def dico_exporter(**kwargs):
 
 
 ''' 
-    TODO: Set the start date of the dag to the last Tuesday,
-        this way the dag will run only once before its next running schedule 
-        defined by the schedule_interval
-        e.g Today is Wed 16th February 2022, the start is datetime(2022, 1, 15)
+    TODO: We need to manually trigger this dag for the very first time in order 
+    for the s3_ingestion_dag to have links dictionary to work with.
+    After the first run, this dag will run every Tuesday at 11:50pm, 
+    only 5 minutes before the ingestion dag runs.
 '''
 default_args = {
     "owner": "airflow",
-    "start_date": datetime(2022, 1, 15), 
+    "start_date": datetime(2022, 2, 17), 
     "depends_on_past": False,
     "retries": 1
 }

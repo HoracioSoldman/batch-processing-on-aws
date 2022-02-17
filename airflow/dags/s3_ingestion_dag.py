@@ -57,15 +57,15 @@ download_cmd= "curl -sSLf $link > $destination"
 
 default_args = {
     "owner": "airflow",
-    "start_date": datetime(2021, 1, 5),
-    "depends_on_past": False,
+    "start_date": datetime(2021, 1, 1),
+    "depends_on_past": True,  # the previous task instance needs to have succeeded for the current one to run
     "retries": 1,
 }
 
 with DAG(
     dag_id="s3_ingestion_dag",
     schedule_interval="55 23 * * 2",  # run this dag every Tuesday at 11:55pm
-    max_active_runs=1,
+    max_active_runs=3,
     catchup=True,
     tags=['s3', 'aws', 'ingestion', 'cycling'],
     default_args=default_args

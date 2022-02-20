@@ -6,7 +6,9 @@ ENV AIRFLOW_HOME=/opt/airflow
 
 USER root
 
-RUN apt-get update -qq && apt-get install firefox-esr -y -qq
+RUN apt-get update -qq \
+    && apt-get install firefox-esr -y -qq \
+    && apt-get install wget -y -qq
 
 COPY requirements.txt .
 

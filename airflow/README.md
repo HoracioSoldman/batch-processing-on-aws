@@ -68,7 +68,7 @@ docker-compose down
 ### Note: 
 It is highly recommended to manually trigger the `web_scraping_dag` prior to enabling the `s3_ingestion_dag`. 
 
-In order to do this, open the `web_scraping_dag` and click on the **Play** button on the right, then select **Trigger Dags now**.
+In order to do this, open the `web_scraping_dag` on Airflow and click on the **Play** button on the right, then select **Trigger Dags now**. All the scraping tasks must be completed before starting the ingestion with the other DAG.
 
 
 

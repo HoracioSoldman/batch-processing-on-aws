@@ -12,7 +12,7 @@ RUN apt-get update -qq \
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -q -r requirements.txt
+RUN pip install -q -r requirements.txt
 
 # workaround to fix selenium module not found
 RUN curl -sSLf "https://files.pythonhosted.org/packages/58/76/705b5c776f783d1ba7c630347463d4ae323282bbd859a8e9420c7ff79581/selenium-4.1.0-py3-none-any.whl" > ~/selenium-4.1.0-py3-none-any.whl \

@@ -5,19 +5,15 @@ import json
 
 from airflow import DAG
 from airflow.utils.dates import days_ago
+from airflow.operators.dummy import DummyOperator
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
+from airflow.utils.task_group import TaskGroup
 from airflow.providers.amazon.aws.transfers.local_to_s3 import LocalFilesystemToS3Operator
-from airflow.providers.amazon.aws.operators.redshift import RedshiftSQLOperator
-from airflow.utils.dates import datetime
-
-import pyarrow.csv as pv
-import pyarrow.parquet as pq
-import pandas as pd
 
 
-path_to_local_home = os.environ.get("AIRFLOW_HOME", "/opt/airflow/")
-S3_DESTINATION= 'raw/cycling-extras'
+path_to_local_home = os.environ.get("AIRFLOW_HOME", "/opt/airflow")
+S3_DESTINATION = f"raw/cycling-extras"
 S3_BUCKET = os.environ.get("S3_BUCKET", "s3_no_bucket")
 download_links= [
     {   
@@ -29,12 +25,7 @@ download_links= [
         'type': 'weather',
         'link': '--no-check-certificate "https://docs.google.com/uc?export=download&id=1Aa2mP5CwLele94GkJWqvpCmlm6GXeu8c"',
         'output': 'weather.json'
-    },
-    {
-        'type': 'journey',
-        'link': 'https://cycling.data.tfl.gov.uk/usage-stats/252JourneyDataExtract10Feb2021-16Feb2021.csv',
-        'output': 'journey.csv'
-    },
+    }
 
 ]
 
@@ -49,29 +40,6 @@ def extract_dates(filepath):
     
     with open(filepath, 'w') as f:
         json.dump(days, f)
-
-# infer schema for from a file
-def infer_table_schema(source_file, table_name, **kwargs):
-    file_type= source_file.split('.')[-1]
-    if file_type == 'csv':
-        df= pd.read_csv(source_file)
-    elif file_type == 'json':
-        df= pd.read_json(source_file)
-    else:
-        raise Exception(f"Sorry, the filetype {file_type} is not supported.")
-    
-    schema= pd.io.sql.get_schema(frame=df, name=table_name)
-    if 'CREATE TABLE' in schema:
-        # add IF NOT EXISTS condition in the DDL query
-        schema= schema.replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS')
-        kwargs['ti'].xcom_push(key="ddl_query", value=schema)
-    else:
-        raise Exception(f"Sorry, the schema: {schema} does not seem to be correct.")
-
-
-
-def print_schema(schema):
-    print('SCHEMA:', schema)
 
 
 default_args = {
@@ -91,67 +59,52 @@ with DAG(
     default_args=default_args,
     catchup=False,
     max_active_runs=3,
-    tags=['weather', 'stations', 'docking stations', 'london weather', 'london 2021'],
+    tags=['weather', 'stations', 'docking stations', 'london', '2021'],
 ) as dag:
 
-    for item in download_links:
-        
-        download_file = BashOperator(
-            task_id=f"download_{item['type']}_task",
-            bash_command=f"wget {item['link']} -O {path_to_local_home}/{item['output']}"
+    start_task = DummyOperator(
+        task_id="start"
+    )
+
+    with TaskGroup("download_extract_weather_data", tooltip="Download - Extract") as section_weather:
+        download_w = BashOperator(
+            task_id="download_weather_task",
+            bash_command=f"wget {download_links[1]['link']} -O {path_to_local_home}/{download_links[1]['output']}"
         )
 
-        
-        infer_schema = PythonOperator(
-            task_id=f"infer_{item['type']}_schema",
-            python_callable=infer_table_schema,
-            provide_context=True,
+        extract_daily_weather = PythonOperator(
+            task_id="extract_daily_weather_task",
+            python_callable=extract_dates,
             op_kwargs={
-                "source_file": f"{path_to_local_home}/{item['output']}",
-                "table_name": f"staging_{item['type']}"
+                "filepath": f"{path_to_local_home}/{download_links[1]['output']}"
             }
         )
 
+        download_w >> extract_daily_weather
 
-        # create_redshift_table = RedshiftSQLOperator(
-        #     task_id=f"create_table_{item['type']}_task",
-        #     sql="{{ti.xcom_pull(key='ddl_query')}}"
-        # )
+    
 
-        print_the_schema = PythonOperator(
-            task_id=f"print_table_{item['type']}_schema_task",
-            python_callable=print_schema,
-            op_kwargs={
-                "schema": "{{ti.xcom_pull(key='ddl_query')}}"
-            }
-        )
-
-
-        # upload_to_s3 = LocalFilesystemToS3Operator(
-        #     task_id=f"upload_{item['type']}_to_s3_task",
-        #     filename=item['output'],
-        #     dest_key=f"{S3_DESTINATION}/{item['output']}",
-        #     dest_bucket=S3_BUCKET,
-        # )
-
-        
-        cleanup_local_storage_task = BashOperator(
-            task_id=f"cleanup_local_{item['output']}_task",
-            bash_command=f"rm {path_to_local_home}/{item['output']}"
-        )
-
-
-        if item['type'] == 'weather':
-
-            extract_daily_weather = PythonOperator(
-                task_id="extract_weather_dates_task",
-                python_callable=extract_dates,
-                op_kwargs={
-                    "filepath": f"{path_to_local_home}/{item['output']}"
-                }
+    download_s = BashOperator(
+        task_id="download_stations_task",
+        bash_command=f"wget {download_links[0]['link']} -O {path_to_local_home}/{download_links[0]['output']}"
+    )
+    
+    with TaskGroup("upload_files_to_s3", tooltip="Upload to S3") as section_upload:
+        for item in download_links:
+            upload_to_s3 = LocalFilesystemToS3Operator(
+                task_id=f"upload_{item['output']}_to_s3_task",
+                filename=item['output'],
+                dest_key=S3_DESTINATION,
+                dest_bucket=S3_BUCKET,
             )
 
-            download_file >> extract_daily_weather >> infer_schema >> print_the_schema >> cleanup_local_storage_task
-        
-        else: 
-            download_file >> infer_schema >> print_the_schema >> cleanup_local_storage_task
+    
+
+    end_task = BashOperator(
+        task_id="end",
+        bash_command=f"rm {path_to_local_home}/*.json {path_to_local_home}/*.csv "
+    )
+
+
+    start_task >> [download_s, section_weather] >> section_upload >> end_task
+

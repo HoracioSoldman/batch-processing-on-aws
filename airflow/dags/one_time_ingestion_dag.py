@@ -10,7 +10,7 @@ from airflow.operators.dummy import DummyOperator
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
-from sqlalchemy import table
+from airflow.models import XCom
 from airflow.providers.amazon.aws.transfers.local_to_s3 import LocalFilesystemToS3Operator
 from airflow.providers.amazon.aws.operators.redshift import RedshiftSQLOperator
 
@@ -66,7 +66,7 @@ def initialize_workflow(**kwargs):
         ''')
 
 # infer schema for from a file
-def infer_table_schema(filepath, **kwargs):
+def infer_table_schema(filepath, index, **kwargs):
 
     file_type= filepath.split('.')[-1]
     
@@ -92,8 +92,7 @@ def infer_table_schema(filepath, **kwargs):
     else:
         raise Exception(f"Sorry, the schema: {schema} does not seem to be correct.")
     
-    ddl_query= kwargs['ti'].xcom_pull(key='ddl_query')
-    ddl_query+= f"""
+    ddl_query= f"""
     
     -- CREATE staging_{table_name} TABLE
     {schema};
@@ -103,19 +102,7 @@ def infer_table_schema(filepath, **kwargs):
     
     print(ddl_query)
 
-    kwargs['ti'].xcom_push(key="ddl_query", value=ddl_query)
-
-
-def print_schema(**kwargs):
-
-    ddl_query= kwargs['ti'].xcom_pull(key='ddl_query')
-
-    # add END to terminate the script
-    ddl_query+='''
-    END;
-    '''
-    kwargs['ti'].xcom_push(key="ddl_query", value=ddl_query)
-    print('SCHEMA:', ddl_query)
+    kwargs['ti'].xcom_push(key=f"query_{index}", value=ddl_query)
 
 
 
@@ -139,11 +126,7 @@ with DAG(
     tags=['weather', 'stations', 'docking stations', 'london', '2021'],
 ) as dag:
 
-    start = PythonOperator(
-                task_id="start",
-                python_callable=initialize_workflow,
-                provide_context=True
-            )
+    start = DummyOperator(task_id="start")
 
     for index, item in enumerate(download_links):
         
@@ -154,45 +137,50 @@ with DAG(
             )
 
 
-            preprocessing_task = PythonOperator(
-                task_id=f"preprocess_{index}_data",
-                python_callable=preprocess_data,
-                provide_context=True,
-                op_kwargs={
-                    "filepath": f"{path_to_local_home}/{item['output']}"
-                }
-            )
-
             infer_schema_task = PythonOperator(
                 task_id=f"infer_{index}_schema",
                 python_callable=infer_table_schema,
                 provide_context=True,
                 op_kwargs={
                     "filepath": f"{path_to_local_home}/{item['output']}",
+                    "index": index
                 }
             )
+
+            if item['output'] == 'weather.json':
+                preprocessing_task = PythonOperator(
+                    task_id=f"preprocess_{index}_data",
+                    python_callable=preprocess_data,
+                    provide_context=True,
+                    op_kwargs={
+                        "filepath": f"{path_to_local_home}/{item['output']}"
+                    }
+                )
+
+                download_task >> preprocessing_task >> infer_schema_task
             
-            upload_to_s3 = LocalFilesystemToS3Operator(
-                task_id=f"upload_to_s3_task",
+            else:
+                download_task >> infer_schema_task
+
+    with TaskGroup("create_staging_tables", tooltip="create redshift tables") as create_tables:
+        for index, item in enumerate(download_links):
+            
+            create_redshift_tables_task = RedshiftSQLOperator(
+                task_id=f"create_staging_{index}_tables_task",
+                sql="{{{{ ti.xcom_pull(key='query_{}') }}}}".format(index)
+            )
+
+
+    with TaskGroup("upload_files_to_s3", tooltip="create redshift tables") as upload_to_s3:
+
+        for index, item in enumerate(download_links):
+            
+            upload_to_s3_task = LocalFilesystemToS3Operator(
+                task_id=f"upload_{index}_to_s3_task",
                 filename=item['output'],
                 dest_key=f"{S3_DESTINATION}/{item['output']}",
                 dest_bucket=S3_BUCKET,
             )
-            
-            download_task >> preprocessing_task >> infer_schema_task >> upload_to_s3
-            
-
-    print_the_schema = PythonOperator(
-        task_id="print_tables_schema_task",
-        python_callable=print_schema,
-        provide_context=True
-    )
-
-
-    create_redshift_tables = RedshiftSQLOperator(
-        task_id="create_staging_tables_task",
-        sql="{{ti.xcom_pull(key='ddl_query')}}"
-    )
 
 
     cleanup = BashOperator(
@@ -200,4 +188,4 @@ with DAG(
         bash_command=f"rm {path_to_local_home}/*.json {path_to_local_home}/*.csv "
     )
 
-    start >> [item['name'] for item in download_links] >> print_the_schema >> create_redshift_tables >> cleanup
+    start >> [item['name'] for item in download_links] >> create_tables >> upload_to_s3 >> cleanup

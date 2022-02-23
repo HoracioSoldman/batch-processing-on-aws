@@ -12,7 +12,6 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.models import XCom
 from airflow.providers.amazon.aws.transfers.local_to_s3 import LocalFilesystemToS3Operator
-from airflow.providers.amazon.aws.operators.redshift import RedshiftSQLOperator
 
 
 path_to_local_home = os.environ.get("AIRFLOW_HOME", "/opt/airflow")
@@ -55,57 +54,6 @@ def preprocess_data(filepath):
         json.dump(daily_weather, f)
 
 
-def initialize_workflow(**kwargs):
-    
-    # add BEGIN to mark the start of future queries in the script
-    kwargs['ti'].xcom_push(
-        key="ddl_query", 
-        value='''
-        -- DDL QUERY TO CREATE STAGING TABLES
-        BEGIN;
-        ''')
-
-# infer schema for from a file
-def infer_table_schema(filepath, index, **kwargs):
-
-    file_type= filepath.split('.')[-1]
-    
-    fnm= filepath.split('/')[-1]
-
-    table_name= fnm.split('.')[0]
-    
-    
-    if file_type == 'csv':
-        df= pd.read_csv(filepath)
-    
-    elif file_type == 'json':
-        df= pd.read_json(filepath)
-    
-    else:
-        raise Exception(f"Sorry, the filetype {file_type} is not supported.")
-    
-    schema= pd.io.sql.get_schema(frame=df, name=f'staging_{table_name}')
-    if 'CREATE TABLE' in schema:
-        # add IF NOT EXISTS condition in the DDL query
-        schema= schema.replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS')
-        
-    else:
-        raise Exception(f"Sorry, the schema: {schema} does not seem to be correct.")
-    
-    ddl_query= f"""
-    
-    -- CREATE staging_{table_name} TABLE
-    {schema};
-    -- END OF TABLE CREATION
-
-    """
-    
-    print(ddl_query)
-
-    kwargs['ti'].xcom_push(key=f"query_{index}", value=ddl_query)
-
-
-
 default_args = {
     "owner": "airflow",
     "start_date": days_ago(1),
@@ -117,39 +65,30 @@ default_args = {
 with DAG(
     dag_id="one_time_ingestion_dag",
     description="""
-        This dag ingests extra files for the cycling journey including: the docking stations and the weather data.
+        This dag ingests extra files for the cycling journey including: the docking stations, 
+        the weather data and an example file for cycling journey.
     """, 
     schedule_interval="@once",
     default_args=default_args,
     catchup=False,
     max_active_runs=3,
-    tags=['weather', 'stations', 'docking stations', 'london', '2021'],
+    tags=['weather', 'stations', 'docking stations', 'london', '2021', 'journey'],
 ) as dag:
 
     start = DummyOperator(task_id="start")
 
-    for index, item in enumerate(download_links):
         
-        with TaskGroup(f"{item['name']}_data", tooltip="Download - Upload") as item['name']:
+    with TaskGroup(f"Download_files", tooltip="Download - Preprocess") as download_section:
+
+        for index, item in enumerate(download_links):
             download_task = BashOperator(
-                task_id=f"download_{index}_task",
+                task_id=f"download_{item['name']}_task",
                 bash_command=f"wget {item['link']} -O {path_to_local_home}/{item['output']}"
-            )
-
-
-            infer_schema_task = PythonOperator(
-                task_id=f"infer_{index}_schema",
-                python_callable=infer_table_schema,
-                provide_context=True,
-                op_kwargs={
-                    "filepath": f"{path_to_local_home}/{item['output']}",
-                    "index": index
-                }
             )
 
             if item['output'] == 'weather.json':
                 preprocessing_task = PythonOperator(
-                    task_id=f"preprocess_{index}_data",
+                    task_id=f"extract_daily_weather_data",
                     python_callable=preprocess_data,
                     provide_context=True,
                     op_kwargs={
@@ -157,45 +96,26 @@ with DAG(
                     }
                 )
 
-                download_task >> preprocessing_task >> infer_schema_task
+                download_task >> preprocessing_task
             
-            else:
-                download_task >> infer_schema_task
-
-    with TaskGroup("create_staging_tables", tooltip="create redshift tables") as create_tables:
-        for index, item in enumerate(download_links):
-            
-            create_redshift_tables_task = RedshiftSQLOperator(
-                task_id=f"create_staging_{index}_tables_task",
-                sql="{{{{ ti.xcom_pull(key='query_{}') }}}}".format(index)
-            )
 
 
-    with TaskGroup("upload_files_to_s3", tooltip="create redshift tables") as upload_to_s3:
+    with TaskGroup("upload_files_to_s3", tooltip="create redshift tables") as upload_section:
 
         for index, item in enumerate(download_links):
             
             upload_to_s3_task = LocalFilesystemToS3Operator(
-                task_id=f"upload_{index}_to_s3_task",
+                task_id=f"upload_{item['name']}_to_s3_task",
                 filename=item['output'],
                 dest_key=f"{S3_DESTINATION}/{item['output']}",
                 dest_bucket=S3_BUCKET,
             )
-
-
-    with TaskGroup("remove_csv_headers", tooltip="rm the first line") as rm_headers:
-
-        for index, item in enumerate(download_links):
-            if item['output'].endswith('.csv'):
-                rm_header = BashOperator(
-                    task_id=f"rm_header_{index}",
-                    bash_command=f"sed -i '1d' {path_to_local_home}/{item['output']}"
-                )
-
 
     cleanup = BashOperator(
         task_id="cleanup_local_storage",
         bash_command=f"rm {path_to_local_home}/*.json {path_to_local_home}/*.csv "
     )
 
-    start >> [item['name'] for item in download_links] >> create_tables >> rm_headers >> upload_to_s3 >> cleanup
+    end = DummyOperator(task_id="end")
+
+    start >> download_section >> upload_section >> cleanup >> end

@@ -183,9 +183,19 @@ with DAG(
             )
 
 
+    with TaskGroup("remove_csv_headers", tooltip="rm the first line") as rm_headers:
+
+        for index, item in enumerate(download_links):
+            if item['output'].endswith('.csv'):
+                rm_header = BashOperator(
+                    task_id=f"rm_header_{index}",
+                    bash_command=f"sed -i '1d' {path_to_local_home}/{item['output']}"
+                )
+
+
     cleanup = BashOperator(
         task_id="cleanup_local_storage",
         bash_command=f"rm {path_to_local_home}/*.json {path_to_local_home}/*.csv "
     )
 
-    start >> [item['name'] for item in download_links] >> create_tables >> upload_to_s3 >> cleanup
+    start >> [item['name'] for item in download_links] >> create_tables >> rm_headers >> upload_to_s3 >> cleanup

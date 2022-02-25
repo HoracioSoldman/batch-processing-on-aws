@@ -2,6 +2,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import datetime
+from airflow.utils.dates import days_ago
 
 from bs4 import BeautifulSoup
 
@@ -53,7 +54,7 @@ def links_extractor(**kwargs):
     tbody= table.find('tbody')
     folder_name= "usage-stats/"
     capture_files= False
-    year= 2021
+    years= [2021, 2022]
     filetype= 'csv'
     extracted_files= {}
 
@@ -70,12 +71,14 @@ def links_extractor(**kwargs):
         else:
             col= columns[0]
             filename= col.text.strip()
-            
-            if not filename.endswith(f'{year}.{filetype}'):
+            filename_without_extension= filename.split('.')[-2]
+            year_in_filename= filename_without_extension[-4:]
+
+            if not year_in_filename.isdigit() or not int(year_in_filename) in years:
                 continue
             
             # extract the date (e.g 257JourneyDataExtract17Mar2021-23Mar2021.csv --> 23Mar2021)
-            filename_without_extension= filename.replace(f'.{filetype}', '') 
+            
             filename_last_date= filename_without_extension.split('-')[-1]
             extracted_files[filename_last_date]= col.a['href']
     
@@ -103,7 +106,7 @@ def dico_exporter(**kwargs):
 '''
 default_args = {
     "owner": "airflow",
-    "start_date": datetime(2022, 2, 17), 
+    "start_date": days_ago(1), 
     "depends_on_past": False,
     "retries": 1
 }

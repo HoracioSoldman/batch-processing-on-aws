@@ -3,7 +3,7 @@ This project process cycling data from the Transport For London (TFL) website.
 
 ## Data Warehouse
 The Entity Relational Diagram (ERD) for the final Data Warehouse is represented in the following image:
-![The ERD](/images/Cycling-ERD.png "ERD edited from dbdiagram.io")
+![The ERD](/images/CyclingERD.png "ERD edited from dbdiagram.io")
 
 
 ## Apache Spark

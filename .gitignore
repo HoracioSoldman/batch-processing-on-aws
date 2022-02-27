@@ -9,3 +9,6 @@ terraform.tfstate*
 __pycache__
 
 airflow/.env
+
+
+.ipynb_checkpoints

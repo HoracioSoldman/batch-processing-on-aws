@@ -10,13 +10,13 @@ from airflow.operators.dummy import DummyOperator
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
-from airflow.models import XCom
 from airflow.providers.amazon.aws.transfers.local_to_s3 import LocalFilesystemToS3Operator
 
 
 path_to_local_home = os.environ.get("AIRFLOW_HOME", "/opt/airflow")
 S3_DESTINATION = "raw/cycling-extras"
 S3_BUCKET = os.environ.get("S3_BUCKET", "s3_no_bucket")
+S3_SCRIPT_DESTINATION = "utils/scripts/"
 download_links= [
     {   
         'name': 'stations',
@@ -34,6 +34,7 @@ download_links= [
         'output': 'journey.csv'
     }
 ]
+local_scripts = [ 'journey-transformation.py', 'one-time-data-transformation.py' ]
 
 
 # extract days value from the weather data
@@ -100,7 +101,7 @@ with DAG(
             
 
 
-    with TaskGroup("upload_files_to_s3", tooltip="create redshift tables") as upload_section:
+    with TaskGroup("upload_files_to_s3") as upload_section:
 
         for index, item in enumerate(download_links):
             
@@ -111,11 +112,24 @@ with DAG(
                 dest_bucket=S3_BUCKET,
             )
 
+
     cleanup = BashOperator(
         task_id="cleanup_local_storage",
         bash_command=f"rm {path_to_local_home}/*.json {path_to_local_home}/*.csv "
     )
 
+    # upload scripts
+    with TaskGroup("upload_scripts_to_s3") as upload_scripts_section:
+        for index, item in enumerate(local_scripts):
+            upload_scripts_to_s3_task = LocalFilesystemToS3Operator(
+                task_id=f"upload_scritps_{index}_to_s3_task",
+                filename=item,
+                dest_key=f"{S3_DESTINATION}/{item}",
+                dest_bucket=S3_BUCKET,
+            )
+
     end = DummyOperator(task_id="end")
 
     start >> download_section >> upload_section >> cleanup >> end
+    start >> upload_scripts_section >> end
+

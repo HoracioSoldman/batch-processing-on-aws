@@ -8,9 +8,9 @@ CREATE TABLE "fact_journey" (
   "bike_id" int,
   "start_date" timestamp,
   "end_date" timestamp,
-  "start_station_id" int,
-  "end_station_id" int,
-  "weather_id" date
+  "start_station" int,
+  "end_station" int,
+  "weather_date" date
 );
 
 CREATE TABLE "dim_station" (
@@ -24,26 +24,26 @@ CREATE TABLE "dim_station" (
 
 CREATE TABLE "dim_weather" (
   "weather_date" date PRIMARY KEY,
-  "tempmax" double precision,
-  "tempmin" double precision,
-  "temp" double precision,
+  "feelslike" double precision,
   "feelslikemax" double precision,
   "feelslikemin" double precision,
-  "feelslike" double precision,
   "humidity" double precision,
+  "moonphase" double precision,
   "precip" double precision,
-  "windgust" double precision,
-  "windspeed" double precision,
-  "winddir" double precision,
   "pressure" double precision,
-  "visibility" double precision,
-  "solarradiation" double precision,
   "solarenergy" double precision,
-  "uvindex" double precision,
+  "solarradiation" double precision,
   "sunrise" varchar,
   "sunset" varchar,
-  "moonphase" double precision,
-  "tzoffset" double precision
+  "temp" double precision,
+  "tempmax" double precision,
+  "tempmin" double precision,
+  "tzoffset" double precision,
+  "uvindex" double precision,
+  "visibility" double precision,
+  "winddir" double precision,
+  "windgust" double precision,
+  "windspeed" double precision
 );
 
 CREATE TABLE "dim_datetime" (
@@ -61,8 +61,8 @@ ALTER TABLE "fact_journey" ADD FOREIGN KEY ("start_date") REFERENCES "dim_dateti
 
 ALTER TABLE "fact_journey" ADD FOREIGN KEY ("end_date") REFERENCES "dim_datetime" ("datetime_id");
 
-ALTER TABLE "fact_journey" ADD FOREIGN KEY ("start_station_id") REFERENCES "dim_station" ("station_id");
+ALTER TABLE "fact_journey" ADD FOREIGN KEY ("start_station") REFERENCES "dim_station" ("station_id");
 
-ALTER TABLE "fact_journey" ADD FOREIGN KEY ("end_station_id") REFERENCES "dim_station" ("station_id");
+ALTER TABLE "fact_journey" ADD FOREIGN KEY ("end_station") REFERENCES "dim_station" ("station_id");
 
-ALTER TABLE "dim_weather" ADD FOREIGN KEY ("weather_date") REFERENCES "fact_journey" ("weather_id");
+ALTER TABLE "fact_journey" ADD FOREIGN KEY ("weather_date") REFERENCES "dim_weather" ("weather_date");

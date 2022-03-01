@@ -8,12 +8,11 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
 
 from airflow import DAG
-from airflow.providers.amazon.aws.operators.emr import (
-    EmrAddStepsOperator,
-    EmrCreateJobFlowOperator,
-    EmrTerminateJobFlowOperator,
-)
-from airflow.providers.amazon.aws.sensors.emr import EmrStepSensor
+from airflow.providers.amazon.aws.operators.emr_add_steps import EmrAddStepsOperator
+from airflow.providers.amazon.aws.operators.emr_create_job_flow import EmrCreateJobFlowOperator
+from airflow.providers.amazon.aws.operators.emr_terminate_job_flow import EmrTerminateJobFlowOperator
+    
+from airflow.providers.amazon.aws.sensors.emr_step import EmrStepSensor
 
 S3_BUCKET = os.environ.get("S3_BUCKET", "s3_no_bucket")
 local_scripts = "dags/scripts"

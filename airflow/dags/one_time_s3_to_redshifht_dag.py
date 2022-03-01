@@ -8,30 +8,38 @@ from airflow.providers.amazon.aws.transfers.s3_to_redshift import S3ToRedshiftOp
 
 
 S3_BUCKET = os.environ.get("S3_BUCKET", "s3_no_bucket")
-S3_KEY_EXTRAS = f"processed/cycling-extras"
-S3_KEY_JOURNEY = f"processed"
+S3_KEY_EXTRAS = f"processed/cycling-dimension"
+S3_KEY_JOURNEY = f"processed/test"
 
 s3_objects= [
-    # {   
-    #     'type': 'stations',
-    #     'key': S3_KEY_EXTRAS,
-    #     'filename': 'stations',
-    #     'table': 'dim_station',
-    #     'file_type': 'parquet',
-    #     'upsert_key': 'station_id'
-    # },
-    # {
-    #     'type': 'weather',
-    #     'key': S3_KEY_EXTRAS,
-    #     'filename': 'weather/',
-    #     'table': 'dim_weather',
-    #     'file_type': 'parquet',
-    #     'upsert_key': 'weather_date'
-    # },
+    {   
+        'type': 'stations',
+        'key': S3_KEY_EXTRAS,
+        'filename': 'stations/',
+        'table': 'dim_station',
+        'file_type': 'parquet',
+        'upsert_key': 'station_id'
+    },
+    {
+        'type': 'weather',
+        'key': S3_KEY_EXTRAS,
+        'filename': 'weather/',
+        'table': 'dim_weather',
+        'file_type': 'parquet',
+        'upsert_key': 'weather_date'
+    },
+    {
+        'type': 'datetime',
+        'key': S3_KEY_EXTRAS,
+        'filename': 'datetime/',
+        'table': 'dim_datetime',
+        'file_type': 'parquet',
+        'upsert_key': 'datetime_id'
+    },
     {
         'type': 'journey',
         'key': S3_KEY_JOURNEY,
-        'filename': 'cycling-journey/',
+        'filename': 'journey/',
         'table': 'fact_journey',
         'file_type': 'parquet',
         'upsert_key': 'rental_id'
@@ -78,14 +86,3 @@ with DAG(
     end = DummyOperator(task_id="end")
 
     start >> transfer_section >> end
-
-
-
-
-
-
-
-
-
-
-

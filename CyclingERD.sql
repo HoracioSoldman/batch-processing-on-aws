@@ -6,10 +6,10 @@ DROP TABLE IF EXISTS "dim_datetime";
 CREATE TABLE "fact_journey" (
   "rental_id" int PRIMARY KEY,
   "bike_id" int,
-  "start_date" timestamp,
   "end_date" timestamp,
-  "start_station" int,
   "end_station" int,
+  "start_date" timestamp,
+  "start_station" int,
   "weather_date" date
 );
 

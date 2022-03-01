@@ -102,7 +102,8 @@ df_journey= df_journey.drop('StartStation Name', 'EndStation Name', 'Duration')
 df_datetime_from_start= (
     df_journey.select(
         col('start_date').alias('datetime_id'), 
-        year(col('start_date')).alias('year'), 
+        year(col('start_date')).alias('year'),
+        dayofweek(col('start_date')).alias('week_day'), 
         month(col('start_date')).alias('month'), 
         dayofmonth(col('start_date')).alias('day'),
         hour(col('start_date')).alias('hour'),
@@ -113,7 +114,8 @@ df_datetime_from_start= (
 df_datetime_from_end= (
     df_journey.select(
         col('end_date').alias('datetime_id'), 
-        year(col('end_date')).alias('year'), 
+        year(col('end_date')).alias('year'),
+        dayofweek(col('end_date')).alias('week_day'), 
         month(col('end_date')).alias('month'), 
         dayofmonth(col('end_date')).alias('day'),
         hour(col('end_date')).alias('hour'),
@@ -130,7 +132,7 @@ df_datetime_from_end.show(3)
 df_datetime= df_datetime_from_start.union(df_datetime_from_end)
 
 # remove duplicate entries
-df_datetime.dropDuplicates()
+df_datetime= df_datetime.dropDuplicates('datetime_id')
 
 df_datetime.show(10)
 

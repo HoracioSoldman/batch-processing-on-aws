@@ -112,7 +112,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id="web_scraping_dag",
+    dag_id="proc_0_web_scraping_dag",
     schedule_interval="50 23 * * 2", # every Tuesday at 11:50pm
     default_args=default_args,
     catchup=True,

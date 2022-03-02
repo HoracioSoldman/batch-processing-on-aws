@@ -12,14 +12,8 @@ S3_KEY_EXTRAS = f"processed/cycling-dimension"
 S3_KEY_JOURNEY = f"processed/test"
 
 s3_objects= [
-    {   
-        'type': 'stations',
-        'key': S3_KEY_EXTRAS,
-        'filename': 'stations/',
-        'table': 'dim_station',
-        'file_type': 'parquet',
-        'upsert_key': 'station_id'
-    },
+    # we will only load the processed weather dimensional data in this dag, 
+    # as the stations and datetime data still receives updates from proc_2_spark_emr_dag.py.
     {
         'type': 'weather',
         'key': S3_KEY_EXTRAS,
@@ -27,24 +21,7 @@ s3_objects= [
         'table': 'dim_weather',
         'file_type': 'parquet',
         'upsert_key': 'weather_date'
-    },
-    {
-        'type': 'datetime',
-        'key': S3_KEY_EXTRAS,
-        'filename': 'datetime/',
-        'table': 'dim_datetime',
-        'file_type': 'parquet',
-        'upsert_key': 'datetime_id'
-    },
-    {
-        'type': 'journey',
-        'key': S3_KEY_JOURNEY,
-        'filename': 'journey/',
-        'table': 'fact_journey',
-        'file_type': 'parquet',
-        'upsert_key': 'rental_id'
     }
-
 ]
 
 
@@ -57,7 +34,7 @@ default_args = {
 
 # NOTE: DAG declaration - using a Context Manager (an implicit way)
 with DAG(
-    dag_id="init_redshift_loading_dag",
+    dag_id="init_2_s3_to_redshifht_dag",
     description="""
         This dag transfers extra files for dimensions from S3 to Redshift.
     """, 

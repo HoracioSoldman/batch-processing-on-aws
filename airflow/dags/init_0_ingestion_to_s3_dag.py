@@ -16,7 +16,7 @@ from airflow.providers.amazon.aws.transfers.local_to_s3 import LocalFilesystemTo
 path_to_local_home = os.environ.get("AIRFLOW_HOME", "/opt/airflow")
 S3_DESTINATION = "raw/cycling-extras"
 S3_BUCKET = os.environ.get("S3_BUCKET", "s3_no_bucket")
-S3_SCRIPT_DESTINATION = "utils/scripts/"
+S3_SCRIPT_DESTINATION = "utils/scripts"
 download_links= [
     {   
         'name': 'stations',
@@ -34,7 +34,7 @@ download_links= [
         'output': 'journey.csv'
     }
 ]
-local_scripts = [ 'journey-transformation.py', 'one-time-data-transformation.py' ]
+local_scripts = [ 'init-data-transformation.py', 'journey-data-transformation.py' ]
 
 
 # extract days value from the weather data
@@ -64,7 +64,7 @@ default_args = {
 
 # NOTE: DAG declaration - using a Context Manager (an implicit way)
 with DAG(
-    dag_id="init_ingestion_dag",
+    dag_id="init_0_ingestion_to_s3_dag",
     description="""
         This dag ingests extra files for the cycling journey including: the docking stations, 
         the weather data and an example file for cycling journey.
@@ -123,8 +123,8 @@ with DAG(
         for index, item in enumerate(local_scripts):
             upload_scripts_to_s3_task = LocalFilesystemToS3Operator(
                 task_id=f"upload_scritps_{index}_to_s3_task",
-                filename=item,
-                dest_key=f"{S3_DESTINATION}/{item}",
+                filename=f"dags/scripts/{item}",
+                dest_key=f"{S3_SCRIPT_DESTINATION}/{item}",
                 dest_bucket=S3_BUCKET,
             )
 

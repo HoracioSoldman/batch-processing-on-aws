@@ -45,7 +45,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id="s3_ingestion_dag",
+    dag_id="proc_1_ingestion_to_s3_dag",
     schedule_interval="55 23 * * 2",  # run this dag every Tuesday at 11:55pm
     max_active_runs=3,
     catchup=True,

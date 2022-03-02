@@ -79,7 +79,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id="one_time_spark_emr_dag",
+    dag_id="init_spark_emr_dag",
     description="""
         This dag perform a manually triggered and one-time-running workflow which processes extra files in s3.
     """, 

@@ -64,7 +64,7 @@ default_args = {
 
 # NOTE: DAG declaration - using a Context Manager (an implicit way)
 with DAG(
-    dag_id="one_time_ingestion_dag",
+    dag_id="init_ingestion_dag",
     description="""
         This dag ingests extra files for the cycling journey including: the docking stations, 
         the weather data and an example file for cycling journey.

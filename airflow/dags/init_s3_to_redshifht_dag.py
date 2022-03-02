@@ -57,7 +57,7 @@ default_args = {
 
 # NOTE: DAG declaration - using a Context Manager (an implicit way)
 with DAG(
-    dag_id="one_time_redshift_loading_dag",
+    dag_id="init_redshift_loading_dag",
     description="""
         This dag transfers extra files for dimensions from S3 to Redshift.
     """, 

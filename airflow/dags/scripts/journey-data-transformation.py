@@ -132,7 +132,7 @@ df_datetime_from_end.show(3)
 df_datetime= df_datetime_from_start.union(df_datetime_from_end)
 
 # remove duplicate entries
-df_datetime= df_datetime.dropDuplicates('datetime_id')
+df_datetime= df_datetime.dropDuplicates(['datetime_id'])
 
 df_datetime.show(10)
 

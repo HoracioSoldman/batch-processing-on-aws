@@ -25,7 +25,7 @@ download_links= [
     },
     {
         'name': 'weather',
-        'link': '--no-check-certificate "https://docs.google.com/uc?export=download&id=1Aa2mP5CwLele94GkJWqvpCmlm6GXeu8c"',
+        'link': '--no-check-certificate "https://docs.google.com/uc?export=download&id=13LWAH93xxEvOukCnPhrfXH7rZZq_-mss"',
         'output': 'weather.json'
     },
     {

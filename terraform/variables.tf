@@ -7,6 +7,10 @@ variable "ec2_ami" {
     default= "ami-0015a39e4b7c0966f"
 }
 
+variable "s3_bucket_name" {
+    default= "hrc-de-data"
+}
+
 variable "cluster_id" {
     default= "redshift-cluster-0"
 }

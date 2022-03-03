@@ -28,7 +28,7 @@ resource "aws_instance" "de-ec2" {
 }
 
 resource "aws_s3_bucket" "de-s3" {
-  bucket = "hrc-de-data"
+  bucket = "${var.s3_bucket_name}"
   acl = "private"
   
   tags = {

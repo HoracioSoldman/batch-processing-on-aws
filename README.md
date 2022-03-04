@@ -4,7 +4,7 @@ This project shows one way to perform a batch processing using mainly AWS and a 
 
 ## Overview
 
-The current work aims to give answers to business questions concerning bycicle rentals in the city of London from 2021 to January 2022. To do so, we are going to build a data pipeline which collects data from multiple sources, applies transformations and displays the preprocessed data into a dashboard. 
+The current work aims to give answers to business questions concerning bicycle rentals in the city of London from 2021 to January 2022. To do so, we are going to build a data pipeline which collects data from multiple sources, applies transformations and displays the preprocessed data into a dashboard. 
 
 The following diagram illustrates a high-level structure of the pipeline where data flows from different sources to the final visualisation tool.
 
@@ -13,7 +13,7 @@ The following diagram illustrates a high-level structure of the pipeline where d
 ## The dataset
 We are going to process 3 datasets along this project.
 
-1. __Cycling journey__ dataset from January 2021 to January 2022. It is spread into multiple files in the [Transport for London (TFL)](https://cycling.data.tfl.gov.uk/) website. We will scrap the webpage to extract all the relevant links. Then download each files afterwards. This dataset contains the main features for every cycling journey, including: the locations of start/end point of each journey, the timestamps for both departure and arrival, etc. 
+1. __Cycling journey__ dataset from January 2021 to January 2022. It is spread into multiple files in the [Transport for London (TFL)](https://cycling.data.tfl.gov.uk/) website. We will scrap the web page to extract all the relevant links. Then download each file afterwards. This dataset contains the main features for every cycling journey, including: the locations of start/end point of each journey, the timestamps for both departure and arrival, etc. 
 
 2. __Stations__ dataset encompasses the details of every station involved in a journey. This dataset is quite outdated as it does not include stations which were added after 2016. To solve this issue, We will add in this old dataset, all the new stations we encounter in each journey. The stations were found in a forum [What do they know](www.whatdotheyknow.com) and can be downloaded directly from [here](https://www.whatdotheyknow.com/request/664717/response/1572474/attach/3/Cycle%20hire%20docking%20stations.csv.txt).
 
@@ -27,7 +27,7 @@ We are going to build a **Star Schema** which comprises one fact and multiple di
 The Entity Relational Diagram (ERD) for the final Data Warehouse is represented in the following image:
 ![The ERD](/images/CyclingERD.png "ERD edited from dbdiagram.io")
 
-Several columns from both weather and journey data will be removed after data transformation. Also, we will add dimention table dim_datetime which will contain the reference for all datetime-related columns.
+Several columns from both weather and journey data will be removed after data transformation. Also, we will add dimension table dim_datetime which will contain the reference for all datetime-related columns.
 
 The given schema will facilitate the exploration of the whole data in order to answer relevant business questions about them.
 
@@ -36,7 +36,7 @@ The given schema will facilitate the exploration of the whole data in order to a
 
 2. **Apache Airflow**: an open-source tool to programmatically author, schedule and monitor workflows. The majority of data tasks in the project will be monitored on Airflow.
 
-3. **Selenium** and **BeautifulSoup** are packages which help us to perform web scraping. BeautifulSoup cannot scrap a webpage that displays data lazily, this is where Selenium comes into the picture as it can wait for a specific content to load on the page before doing further process.
+3. **Selenium** and **BeautifulSoup** are packages which help us to perform web scraping. BeautifulSoup cannot scrape a webpage that displays data lazily, this is where Selenium comes into the picture as it can wait for a specific content to load on the page before doing further processing.
 
 4. **AWS Simple Storage System** or Simple Storage System: provides a large storage for us to create a __Data Lake__. We will store all the raw data in this location. Also, the preprocessed data will be stored in S3 before being loaded to Redshift.
 
@@ -46,7 +46,7 @@ The given schema will facilitate the exploration of the whole data in order to a
 
 7. **AWS Redshift**, a fully managed and highly scalable data warehouse solution offered by Amazon. We will build our Data Warehouse on Redshift and we will make the data available for visualisation tools from there.
 
-8. **Metabase** another open-source software that allows an easy visualisation and analytics of structured data. We will build a dashboard with Metabase to better visualize our data stored in Redshift.
+8. **Metabase** another open-source software that allows an easy visualisation and analytics of structured data. We will build a dashboard with Metabase to better visualise our data stored in Redshift.
 
 9. **Docker**, a set of platform as a service which containerise softwares, allowing them to act the same way across multiple platforms. In this project, we will run Airflow and Metabase on Docker.
 
@@ -59,7 +59,7 @@ We need to scale our EMR cluster nodes either horizontally or both vertically an
 
 - Horizontal scale refers to adding more cluster nodes to process the high-volume data.
 
-- Vertical and Horizontal scale means that we increase the performance of existing nodes. Then we also add more new nodes to the cluster.
+- Vertical and Horizontal scale means that we increase the performance of existing nodes. Then we also add new nodes to the cluster.
 
 
 ## Running the project
@@ -75,12 +75,12 @@ In order to run the project smoothly, a few requirements should be met:
 
 
 ### Necessary steps
-1. Clone the repository
+1. __Clone the repository__
     ```bash
     git clone https://github.com/HoracioSoldman/batch-processing-on-aws.git
     ```
 
-2. Run Terraform to build the AWS infrastructure
+2. __Run Terraform__ to build the AWS infrastructure
     
     From the project root folder, move to the `./terraform` directory
     ```bash
@@ -103,7 +103,7 @@ In order to run the project smoothly, a few requirements should be met:
     terraform apply
     ```
 
-3. Create the Data Warehouse
+3. __Create the Data Warehouse__
 
     - Go to the [AWS Redshift](https://console.aws.amazon.com/redshiftv2/home) cluster which was freshly created from Terraform. 
 
@@ -112,18 +112,18 @@ In order to run the project smoothly, a few requirements should be met:
     - Manually `Copy` the content of [CyclingERD.sql](CyclingERD.sql) into the query field and `RUN` the command. This will create the tables and attach constraints to them.
 
 
-4. Run Airflow
+4. __Run Airflow__
      
     #### - From the project root folder, move to the `./airflow` directory
     ```bash
     cd airflow
     ```
-    #### - Create environment variables in `.env` file for our future Docker containers.
+    #### - Create environment variables in the `.env` file for our future Docker containers.
     ```bash
     cp .env.example .env
     ```
 
-    #### - Fill in the content of `.env` file.
+    #### - Fill in the content of the `.env` file.
     The value for `AIRFLOW_UID` is obtained from the following command:
     ```bash
     echo -e "AIRFLOW_UID=$(id -u)"
@@ -136,7 +136,7 @@ In order to run the project smoothly, a few requirements should be met:
     ```
     If you would prefer having another tag, replace the `airflow-img` by whatever you like. Then just make sure that you also change the image tag in [docker-compose.yaml](docker-compose.yaml) at line `48`: `image: <your-tag>:latest`.
 
-    This process might take up to 15 minutes or even more depending on your internet speed. At this stage, Docker also installs several packages defined in the [requirements.txt](requirements.txt).
+    This process might take up to 15 minutes or even more depending on your internet speed. At this stage, Docker also instals several packages defined in the [requirements.txt](requirements.txt).
 
     #### - Run docker-compose to launch Airflow
     
@@ -151,17 +151,17 @@ In order to run the project smoothly, a few requirements should be met:
     ```
     This last command launched `Airflow Postgres` internal database, `Airflow Scheduler` and `Airflow Webserver` which could have been launched separately if we did not use Docker.
 
-5. Run the DAGS on Airflow
+5. __Run the Airflow DAGS__
     
     Once Airflow is up and running, we can now proceed to the most exciting part of the project.
     
     At this time, we need to individually trigger the dags available on Airflow in order to execute the intended operations in them.
     
-    To start with, enable the `init_0_ingestion_to_s3_dag`. Once it's successfully completed, enable the next dag `init_1_spark_emr_dag`. Then one by one, enable the dags until the `proc_3_s3_ro_redshift_dag`.
+    To start with, enable the `init_0_ingestion_to_s3_dag`. Once it's successfully completed, enable the next dag `init_1_spark_emr_dag`. Then one by one, enable the DAGS until the `proc_3_s3_ro_redshift_dag`.
 
     After all dags operations, we now move to Metabase to visualise the data. 
 
-6. Visualise data on Metabase
+6. __Visualise data on Metabase__
     
     Again we will install and run Metabase in a Docker container.
     ```bash
@@ -170,8 +170,12 @@ In order to run the project smoothly, a few requirements should be met:
 
     For the very first time of its execution, the above command downloads the latest Docker image available for Metabase before exposing the application on port `3033`.
 
-    Once the above command finished its execution, Metabase should be available at [http://localhost:3033](http://localhost:3033).
+    Once the above command finishes its execution, Metabase should be available at [http://localhost:3033](http://localhost:3033).
     
     We can now connect our Redshift database to this platform and visualise the data in multiple charts.
 
 
+## Project limitations
+### Manual DAGs triggering
+Up to this point, the DAGS need to be triggered manually one by one. This can be an issue if we would like to run batch processing on a regular basis like hourly or daily.
+One possible solution might be to tie these DAGS together by adding dependencies between them. (Ongoing work)

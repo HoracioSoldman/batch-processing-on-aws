@@ -188,6 +188,11 @@ At this time, we need to individually trigger the dags available on Airflow in o
 
 To start with, enable the `init_0_ingestion_to_s3_dag`. Once it's successfully completed, enable the next dag `init_1_spark_emr_dag`. Then one by one, enable the DAGS until the `proc_3_s3_ro_redshift_dag`.
 
+The following screenshot shows a success run of the first DAG.
+
+![Ingestion DAG (init_0_ingestion_to_s3_dag)](/images/dags/init_0.png "Ingestion DAG in the Graph view")
+
+
 After all dags operations, we now move to Metabase to visualise the data. 
 
 ### 7. Visualise data on Metabase

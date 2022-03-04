@@ -1,19 +1,23 @@
 # Batch processing on aws
 This project shows one way to perform a batch processing using mainly AWS and a few open-source tools.
-* [Overview](#overview)
-* [The Goal](#the-goal)
-* [The dataset](#the-dataset)
-* [Data modeling](#data-modeling)
-* [Tools](#tools)
-* [Scalability](#scalability)
-* [Running the project](#running-the-project)
-    + [Requirements](#requirements)
-    + [Necessary steps](#necessary-steps)
-        - [- Initialization](#--initialization)
-        - [- Planning](#--planning)
-        - [- Applying](#--applying)
-* [Project limitations](#project-limitations)
-    + [Manual DAGs triggering](#manual-dags-triggering)
+- [Overview](#overview)
+- [The Goal](#the-goal)
+- [The dataset](#the-dataset)
+- [Data modeling](#data-modeling)
+- [Tools](#tools)
+- [Scalability](#scalability)
+- [Running the project](#running-the-project)
+  * [1. Requirements](#1-requirements)
+  * [2. Clone the repository](#2-clone-the-repository)
+  * [3. Run Terraform](#3-run-terraform)
+  * [4. Create the Data Warehouse](#4-create-the-data-warehouse)
+  * [5. Run Airflow](#5-run-airflow)
+  * [6. Run the Airflow DAGs](#6-run-the-airflow-dags)
+  * [7. Visualise data on Metabase](#7-visualise-data-on-metabase)
+- [Project limitations](#project-limitations)
+  * [Manual DAGs triggering](#manual-dags-triggering)
+
+
 ## Overview
 
 The current work aims to give answers to business questions concerning bicycle rentals in the city of London from 2021 to January 2022. To do so, we are going to build a data pipeline which collects data from multiple sources, applies transformations and displays the preprocessed data into a dashboard. 
@@ -87,7 +91,7 @@ We need to scale our EMR cluster nodes either horizontally or both vertically an
 
 
 ## Running the project
-### Requirements
+### 1. Requirements
 In order to run the project smoothly, a few requirements should be met:
 - AWS account with sufficient permissions to access and work on S3, Redshift, and EMR.
 
@@ -98,109 +102,108 @@ In order to run the project smoothly, a few requirements should be met:
 - Terraform preinstalled in your local environment. If not, please install it by following the instructions given in the [official download page](https://www.terraform.io/downloads).
 
 
-### Necessary steps
-1. __Clone the repository__
-    ```bash
-    git clone https://github.com/HoracioSoldman/batch-processing-on-aws.git
-    ```
+### 2. Clone the repository
+```bash
+git clone https://github.com/HoracioSoldman/batch-processing-on-aws.git
+```
 
-2. __Run Terraform__ to build the AWS infrastructure
-    
-    From the project root folder, move to the `./terraform` directory
-    ```bash
-    cd terraform
-    ```
-    Run terraform commands one by one
+### 3. Run Terraform
+We are going to use Terraform to build our AWS infrastructure
 
-    #### - Initialization
+From the project root folder, move to the `./terraform` directory
+```bash
+cd terraform
+```
+Run terraform commands one by one
+
+- Initialization
     ```bash
     terraform init
     ```
 
-    #### - Planning
+- Planning
     ```bash
     terraform plan
     ```
-
-    #### - Applying
+- Applying
     ```bash
     terraform apply
     ```
 
-3. __Create the Data Warehouse__
+### 4. Create the Data Warehouse
 
-    - Go to the [AWS Redshift](https://console.aws.amazon.com/redshiftv2/home) cluster which was freshly created from Terraform. 
+- Go to the [AWS Redshift](https://console.aws.amazon.com/redshiftv2/home) cluster which was freshly created from Terraform. 
 
-    - Connect to your database then go to `Query Data`.
-    
-    - Manually `Copy` the content of [CyclingERD.sql](/CyclingERD.sql) into the query field and `RUN` the command. This will create the tables and attach constraints to them.
+- Connect to your database then go to `Query Data`.
+
+- Manually `Copy` the content of [CyclingERD.sql](/CyclingERD.sql) into the query field and `RUN` the command. This will create the tables and attach constraints to them.
 
 
-4. __Run Airflow__
+### 5. Run Airflow
      
-    - From the project root folder, move to the `./airflow` directory
-        ```bash
-        cd airflow
-        ```
-    - Create environment variables in the `.env` file for our future Docker containers.
-        ```bash
-        cp .env.example .env
-        ```
-
-    - Fill in the content of the `.env` file.
-        The value for `AIRFLOW_UID` is obtained from the following command:
-        ```bash
-        echo -e "AIRFLOW_UID=$(id -u)"
-        ```
-        Then the value for `AIRFLOW_GID` can be left to `0`.
-
-        - Build our extended Airflow Docker image
-        ```bash
-        docker build -t airflow-img .
-        ```
-        If you would prefer having another tag, replace the `airflow-img` by whatever you like. Then just make sure that you also change the image tag in [docker-compose.yaml](/airflow/docker-compose.yaml) at line `48`: `image: <your-tag>:latest`.
-
-        This process might take up to 15 minutes or even more depending on your internet speed. At this stage, Docker also instals several packages defined in the [requirements.txt](/airflow/requirements.txt).
-
-    - Run docker-compose to launch Airflow
-    
-        Initialise Airflow
-        ```bash
-        docker-compose up airflow-init 
-        ```
-
-        Launch Airflow
-        ```bash
-        docker-compose up
-        ```
-        This last command launched `Airflow Postgres` internal database, `Airflow Scheduler` and `Airflow Webserver` which could have been launched separately if we did not use Docker.
-
-5. __Run the Airflow DAGS__
-    
-    Once Airflow is up and running, we can now proceed to the most exciting part of the project.
-    
-    At this time, we need to individually trigger the dags available on Airflow in order to execute the intended operations in them.
-    
-    To start with, enable the `init_0_ingestion_to_s3_dag`. Once it's successfully completed, enable the next dag `init_1_spark_emr_dag`. Then one by one, enable the DAGS until the `proc_3_s3_ro_redshift_dag`.
-
-    After all dags operations, we now move to Metabase to visualise the data. 
-
-6. __Visualise data on Metabase__
-    
-    Again we will install and run Metabase in a Docker container.
+- From the project root folder, move to the `./airflow` directory
     ```bash
-    docker run -d -p 3033:3000 --name metabase metabase/metabase
+    cd airflow
+    ```
+- Create environment variables in the `.env` file for our future Docker containers.
+    ```bash
+    cp .env.example .env
     ```
 
-    For the very first time of its execution, the above command downloads the latest Docker image available for Metabase before exposing the application on port `3033`.
+- Fill in the content of the `.env` file.
+    The value for `AIRFLOW_UID` is obtained from the following command:
+    ```bash
+    echo -e "AIRFLOW_UID=$(id -u)"
+    ```
+    Then the value for `AIRFLOW_GID` can be left to `0`.
 
-    Once the above command finishes its execution, Metabase should be available at [http://localhost:3033](http://localhost:3033).
-    
-    We can now connect our Redshift database to this platform and visualise the data in multiple charts.
+    - Build our extended Airflow Docker image
+    ```bash
+    docker build -t airflow-img .
+    ```
+    If you would prefer having another tag, replace the `airflow-img` by whatever you like. Then just make sure that you also change the image tag in [docker-compose.yaml](/airflow/docker-compose.yaml) at line `48`: `image: <your-tag>:latest`.
 
-    The following screenshot displays a part of our final dashboard which clearly shows some useful insights about bicycle rides in different dimensions.
+    This process might take up to 15 minutes or even more depending on your internet speed. At this stage, Docker also instals several packages defined in the [requirements.txt](/airflow/requirements.txt).
+
+- Run docker-compose to launch Airflow
+
+    Initialise Airflow
+    ```bash
+    docker-compose up airflow-init 
+    ```
+
+    Launch Airflow
+    ```bash
+    docker-compose up
+    ```
+    This last command launched `Airflow Postgres` internal database, `Airflow Scheduler` and `Airflow Webserver` which could have been launched separately if we did not use Docker.
+
+### 6. Run the Airflow DAGs
     
-    ![Final Dashboard](/images/dashboard.png "The final dashboard on Metabase")
+Once Airflow is up and running, we can now proceed to the most exciting part of the project.
+
+At this time, we need to individually trigger the dags available on Airflow in order to execute the intended operations in them.
+
+To start with, enable the `init_0_ingestion_to_s3_dag`. Once it's successfully completed, enable the next dag `init_1_spark_emr_dag`. Then one by one, enable the DAGS until the `proc_3_s3_ro_redshift_dag`.
+
+After all dags operations, we now move to Metabase to visualise the data. 
+
+### 7. Visualise data on Metabase
+    
+Again we will install and run Metabase in a Docker container.
+```bash
+docker run -d -p 3033:3000 --name metabase metabase/metabase
+```
+
+For the very first time of its execution, the above command downloads the latest Docker image available for Metabase before exposing the application on port `3033`.
+
+Once the above command finishes its execution, Metabase should be available at [http://localhost:3033](http://localhost:3033).
+
+We can now connect our Redshift database to this platform and visualise the data in multiple charts.
+
+The following screenshot displays a part of our final dashboard which clearly shows some useful insights about bicycle rides in different dimensions.
+
+![Final Dashboard](/images/dashboard.png "The final dashboard on Metabase")
 
 
 ## Project limitations

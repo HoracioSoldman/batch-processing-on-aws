@@ -1,7 +1,19 @@
 # Batch processing on aws
 This project shows one way to perform a batch processing using mainly AWS and a few open-source tools.
-
-
+* [Overview](#overview)
+* [The Goal](#the-goal)
+* [The dataset](#the-dataset)
+* [Data modeling](#data-modeling)
+* [Tools](#tools)
+* [Scalability](#scalability)
+* [Running the project](#running-the-project)
+    + [Requirements](#requirements)
+    + [Necessary steps](#necessary-steps)
+        - [- Initialization](#--initialization)
+        - [- Planning](#--planning)
+        - [- Applying](#--applying)
+* [Project limitations](#project-limitations)
+    + [Manual DAGs triggering](#manual-dags-triggering)
 ## Overview
 
 The current work aims to give answers to business questions concerning bicycle rentals in the city of London from 2021 to January 2022. To do so, we are going to build a data pipeline which collects data from multiple sources, applies transformations and displays the preprocessed data into a dashboard. 
@@ -9,6 +21,18 @@ The current work aims to give answers to business questions concerning bicycle r
 The following diagram illustrates a high-level structure of the pipeline where data flows from different sources to the final visualisation tool.
 
 ![The ELT](/images/batch-on-aws.png "ERD edited from dbdiagram.io")
+
+
+## The Goal
+The end goal of the current project is to preprocess the data on AWS platform and get useful insights from it. We can learn more from the data by responding some of the following business questions on the final dashboard.
+
+- At what time or which hour of the day has the most active rental in average? 
+
+- Which area has the most active bike rentals in London?
+
+- Which day of the week is the most active in general?
+
+- What is the global trend for daily rentals over the year?
 
 ## The dataset
 We are going to process 3 datasets along this project.
@@ -109,47 +133,47 @@ In order to run the project smoothly, a few requirements should be met:
 
     - Connect to your database then go to `Query Data`.
     
-    - Manually `Copy` the content of [CyclingERD.sql](CyclingERD.sql) into the query field and `RUN` the command. This will create the tables and attach constraints to them.
+    - Manually `Copy` the content of [CyclingERD.sql](/CyclingERD.sql) into the query field and `RUN` the command. This will create the tables and attach constraints to them.
 
 
 4. __Run Airflow__
      
-    #### - From the project root folder, move to the `./airflow` directory
-    ```bash
-    cd airflow
-    ```
-    #### - Create environment variables in the `.env` file for our future Docker containers.
-    ```bash
-    cp .env.example .env
-    ```
+    - From the project root folder, move to the `./airflow` directory
+        ```bash
+        cd airflow
+        ```
+    - Create environment variables in the `.env` file for our future Docker containers.
+        ```bash
+        cp .env.example .env
+        ```
 
-    #### - Fill in the content of the `.env` file.
-    The value for `AIRFLOW_UID` is obtained from the following command:
-    ```bash
-    echo -e "AIRFLOW_UID=$(id -u)"
-    ```
-    Then the value for `AIRFLOW_GID` can be left to `0`.
+    - Fill in the content of the `.env` file.
+        The value for `AIRFLOW_UID` is obtained from the following command:
+        ```bash
+        echo -e "AIRFLOW_UID=$(id -u)"
+        ```
+        Then the value for `AIRFLOW_GID` can be left to `0`.
 
-    #### - Build our extended Airflow Docker image
-    ```bash
-    docker build -t airflow-img .
-    ```
-    If you would prefer having another tag, replace the `airflow-img` by whatever you like. Then just make sure that you also change the image tag in [docker-compose.yaml](docker-compose.yaml) at line `48`: `image: <your-tag>:latest`.
+        - Build our extended Airflow Docker image
+        ```bash
+        docker build -t airflow-img .
+        ```
+        If you would prefer having another tag, replace the `airflow-img` by whatever you like. Then just make sure that you also change the image tag in [docker-compose.yaml](/airflow/docker-compose.yaml) at line `48`: `image: <your-tag>:latest`.
 
-    This process might take up to 15 minutes or even more depending on your internet speed. At this stage, Docker also instals several packages defined in the [requirements.txt](requirements.txt).
+        This process might take up to 15 minutes or even more depending on your internet speed. At this stage, Docker also instals several packages defined in the [requirements.txt](/airflow/requirements.txt).
 
-    #### - Run docker-compose to launch Airflow
+    - Run docker-compose to launch Airflow
     
-    Initialise Airflow
-    ```bash
-    docker-compose up airflow-init 
-    ```
+        Initialise Airflow
+        ```bash
+        docker-compose up airflow-init 
+        ```
 
-    Launch Airflow
-    ```bash
-    docker-compose up
-    ```
-    This last command launched `Airflow Postgres` internal database, `Airflow Scheduler` and `Airflow Webserver` which could have been launched separately if we did not use Docker.
+        Launch Airflow
+        ```bash
+        docker-compose up
+        ```
+        This last command launched `Airflow Postgres` internal database, `Airflow Scheduler` and `Airflow Webserver` which could have been launched separately if we did not use Docker.
 
 5. __Run the Airflow DAGS__
     
@@ -173,6 +197,10 @@ In order to run the project smoothly, a few requirements should be met:
     Once the above command finishes its execution, Metabase should be available at [http://localhost:3033](http://localhost:3033).
     
     We can now connect our Redshift database to this platform and visualise the data in multiple charts.
+
+    The following screenshot displays a part of our final dashboard which clearly shows some useful insights about bicycle rides in different dimensions.
+    
+    ![Final Dashboard](/images/dashboard.png "The final dashboard on Metabase")
 
 
 ## Project limitations

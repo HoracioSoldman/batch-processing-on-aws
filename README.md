@@ -1,5 +1,7 @@
 # Batch processing on aws
 This project shows one way to perform a batch processing using mainly AWS and a few open-source tools.
+
+## Table of contents
 - [Overview](#overview)
 - [The Goal](#the-goal)
 - [The dataset](#the-dataset)

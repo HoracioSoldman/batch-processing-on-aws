@@ -8,22 +8,9 @@ from airflow.providers.amazon.aws.operators.emr_create_job_flow import EmrCreate
 from airflow.providers.amazon.aws.operators.emr_terminate_job_flow import EmrTerminateJobFlowOperator
     
 from airflow.providers.amazon.aws.sensors.emr_step import EmrStepSensor
-from airflow.models import Variable
 
 
 SPARK_STEPS = [
-     {
-        "Name": "COPY scripts from S3 to HDFS",
-        "ActionOnFailure": "CANCEL_AND_WAIT", 
-        "HadoopJarStep": {
-            "Jar": "command-runner.jar",
-            "Args": [
-                "s3-dist-cp",
-                "--src=s3://hrc-de-data/utils/scripts",
-                "--dest=/source",
-            ],
-        },
-    },
     {
         "Name": "One-time data transformation",
         "ActionOnFailure": "CANCEL_AND_WAIT",
@@ -33,7 +20,7 @@ SPARK_STEPS = [
                 "spark-submit",
                 "--deploy-mode",
                 "client",
-                "/source/utils/scripts/init-data-transformation.py",
+                "s3://hrc-de-data/utils/scripts/init-data-transformation.py",
             ],
         },
     }
@@ -42,14 +29,15 @@ SPARK_STEPS = [
 JOB_FLOW_OVERRIDES = {
     'Name': 'ExtrasDataTransformer',
     'ReleaseLabel': 'emr-5.34.0',
-    'Applications': [{'Name': 'Spark'}],
+    'Applications': [{'Name': 'Spark'}, {'Name': 'Hadoop'}],
+    'LogUri': 's3n://hrc-de-data/emr/logs',
     'Instances': {
         'InstanceGroups': [
             {
                 'Name': 'Primary node',
                 'Market': 'SPOT',
                 'InstanceRole': 'MASTER',
-                'InstanceType': 'c4.large',
+                'InstanceType': 'm5.xlarge',
                 'InstanceCount': 1,
             }
         ],

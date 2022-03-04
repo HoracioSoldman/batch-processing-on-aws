@@ -56,8 +56,6 @@ df_journey.printSchema()
 # read previously saved stations data from parquet
 df_processed_stations= spark.read.parquet('s3a://hrc-de-data/processed/cycling-dimension/stations/')
 
-df_processed_stations.tail(2)
-
 # create temporary table for both stations and journey
 df_journey.createOrReplaceTempView('journey')
 df_processed_stations.createOrReplaceTempView('station')
@@ -84,7 +82,7 @@ additional_stations.printSchema()
 
 
 # remove duplicate values
-additional_stations.dropDuplicates()
+additional_stations= additional_stations.dropDuplicates(['station_id'])
 
 
 # save additional stations data into parquet files in s3

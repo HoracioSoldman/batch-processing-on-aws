@@ -53,7 +53,7 @@ df_weather.printSchema()
 
 # drop some columns that we won't need
 weather= df_weather.drop('cloudcover', 'conditions', 'datetimeEpoch', 'description', 'dew', 'icon', 
-                           'precipcover', 'source', 'stations', 'sunriseEpoch', 'sunsetEpoch')
+                           'precipcover', 'preciptype', 'source', 'stations', 'sunriseEpoch', 'sunsetEpoch')
 
 
 # transform datetime
@@ -79,7 +79,7 @@ perc_missing_values.show()
 
 # drop columns where missing values are more than 70%
 
-weather= weather.drop('precipprob', 'preciptype', 'snow', 'snowdepth')
+weather= weather.drop('precipprob', 'snow', 'snowdepth')
 weather.columns
 
 weather= weather.repartition(10)

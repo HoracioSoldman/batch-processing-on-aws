@@ -18,21 +18,10 @@ BUCKET_NAME = os.environ.get("S3_BUCKET", "s3_no_bucket")
 local_scripts = "dags/scripts"
 s3_script = "utils/scripts/"
 
+
 SPARK_STEPS = [
-     {
-        "Name": "COPY scripts from S3 to HDFS",
-        "ActionOnFailure": "CANCEL_AND_WAIT", 
-        "HadoopJarStep": {
-            "Jar": "command-runner.jar",
-            "Args": [
-                "s3-dist-cp",
-                "--src=s3://{{ params.BUCKET }}/{{ params.s3_script }}",
-                "--dest=/source",
-            ],
-        },
-    },
     {
-        "Name": "One-time data transformation",
+        "Name": "Journey data transformation",
         "ActionOnFailure": "CANCEL_AND_WAIT",
         "HadoopJarStep": {
             "Jar": "command-runner.jar",
@@ -40,7 +29,7 @@ SPARK_STEPS = [
                 "spark-submit",
                 "--deploy-mode",
                 "client",
-                "/source/{{ params.s3_script }}/journey-data-transformation.py",
+                "s3://hrc-de-data/utils/scripts/journey-data-transformation.py",
             ],
         },
     }
@@ -48,17 +37,25 @@ SPARK_STEPS = [
 
 JOB_FLOW_OVERRIDES = {
     'Name': 'ExtrasDataTransformer',
-    'ReleaseLabel': 'emr-5.29.0',
-    'Applications': [{'Name': 'Spark'}],
+    'ReleaseLabel': 'emr-5.34.0',
+    'Applications': [{'Name': 'Spark'}, {'Name': 'Hadoop'}],
+    'LogUri': 's3n://hrc-de-data/emr/logs',
     'Instances': {
         'InstanceGroups': [
             {
                 'Name': 'Primary node',
                 'Market': 'SPOT',
                 'InstanceRole': 'MASTER',
-                'InstanceType': 'm1.medium',
+                'InstanceType': 'm5.xlarge',
                 'InstanceCount': 1,
-            }
+            },
+            {
+                "Name": "Core node",
+                "Market": "SPOT",
+                "InstanceRole": "CORE",
+                "InstanceType": "m5.xlarge",
+                "InstanceCount": 2,
+            },
         ],
         'KeepJobFlowAliveWhenNoSteps': False,
         'TerminationProtected': False,
@@ -66,8 +63,8 @@ JOB_FLOW_OVERRIDES = {
     'Steps': SPARK_STEPS,
     'JobFlowRole': 'EMR_EC2_DefaultRole',
     'ServiceRole': 'EMR_DefaultRole',
-    'ServiceRole': 'EMR_DefaultRole',
 }
+
 
 
 

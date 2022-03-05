@@ -15,6 +15,7 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from airflow.sensors.external_task import ExternalTaskSensor
 
 import json
 
@@ -112,13 +113,25 @@ default_args = {
 }
 
 with DAG(
-    dag_id="proc_0_web_scraping_dag",
-    schedule_interval="50 23 * * 2", # every Tuesday at 11:50pm
+    dag_id="init_3__web_scraping_dag",
+    schedule_interval="@once",
     default_args=default_args,
     catchup=True,
     max_active_runs=1,
     tags=['web', 'scraping', 'links', 'source'],
 ) as dag:
+
+
+    external_task_sensor = ExternalTaskSensor(
+        task_id='sensor_for_init_2_s3_to_redshift_dag',
+        poke_interval=30,
+        soft_fail=False,
+        retries=2,
+        allowed_states=['success'],
+        failed_states=['failed', 'skipped'],
+        external_task_id='end',
+        external_dag_id='init_2_s3_to_redshifht_dag',
+    )
 
     download_web_contents_task = PythonOperator(
         task_id="download_contents_task",
@@ -140,4 +153,4 @@ with DAG(
     )
 
 
-    download_web_contents_task >> extract_links_task >> export_links_task
+    external_task_sensor >> download_web_contents_task >> extract_links_task >> export_links_task

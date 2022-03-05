@@ -2,12 +2,11 @@ from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.operators.dummy import DummyOperator
 
-from airflow import DAG
 from airflow.providers.amazon.aws.operators.emr_add_steps import EmrAddStepsOperator
 from airflow.providers.amazon.aws.operators.emr_create_job_flow import EmrCreateJobFlowOperator
 from airflow.providers.amazon.aws.operators.emr_terminate_job_flow import EmrTerminateJobFlowOperator
-    
 from airflow.providers.amazon.aws.sensors.emr_step import EmrStepSensor
+from airflow.sensors.external_task import ExternalTaskSensor
 
 
 SPARK_STEPS = [
@@ -70,6 +69,18 @@ with DAG(
     tags=['spark', 'emr', 'weather', 'stations', 'docking stations', 'london', '2021', 'journey'],
 ) as dag:
 
+
+    external_task_sensor = ExternalTaskSensor(
+        task_id='sensor_for_init_0_ingestion_dag',
+        poke_interval=30,
+        soft_fail=False,
+        retries=2,
+        allowed_states=['success'],
+        failed_states=['failed', 'skipped'],
+        external_task_id='end',
+        external_dag_id='init_0_ingestion_to_s3_dag',
+    )
+
     start = DummyOperator(task_id="start")
     
     cluster_creator = EmrCreateJobFlowOperator(
@@ -100,4 +111,4 @@ with DAG(
     
     end = DummyOperator(task_id="end")
 
-    start >> cluster_creator >> step_adder >> step_checker  >> cluster_remover >> end
+    external_task_sensor >> start >> cluster_creator >> step_adder >> step_checker  >> cluster_remover >> end

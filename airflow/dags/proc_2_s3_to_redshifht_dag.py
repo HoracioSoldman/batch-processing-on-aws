@@ -6,7 +6,6 @@ from airflow.operators.dummy import DummyOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.providers.amazon.aws.transfers.s3_to_redshift import S3ToRedshiftOperator
 
-
 S3_BUCKET = os.environ.get("S3_BUCKET", "s3_no_bucket")
 S3_KEY_DIMS = f"processed/cycling-dimension"
 S3_KEY_JOURNEY = f"processed/cycling-fact"

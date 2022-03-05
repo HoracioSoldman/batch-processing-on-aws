@@ -5,6 +5,7 @@ from airflow.utils.dates import days_ago
 from airflow.operators.dummy import DummyOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.providers.amazon.aws.transfers.s3_to_redshift import S3ToRedshiftOperator
+from airflow.sensors.external_task import ExternalTaskSensor
 
 
 S3_BUCKET = os.environ.get("S3_BUCKET", "s3_no_bucket")
@@ -45,6 +46,18 @@ with DAG(
     tags=['weather', 'stations', '2021', 's3 to redshift'],
 ) as dag:
 
+
+    external_task_sensor = ExternalTaskSensor(
+        task_id='sensor_for_init_1_spark_dag',
+        poke_interval=30,
+        soft_fail=False,
+        retries=2,
+        allowed_states=['success'],
+        failed_states=['failed', 'skipped'],
+        external_task_id='end',
+        external_dag_id='init_1_spark_emr_dag',
+    )
+
     start = DummyOperator(task_id="start")
 
     with TaskGroup("load_files_to_redshift") as transfer_section:
@@ -62,4 +75,4 @@ with DAG(
 
     end = DummyOperator(task_id="end")
 
-    start >> transfer_section >> end
+    external_task_sensor >> start >> transfer_section >> end

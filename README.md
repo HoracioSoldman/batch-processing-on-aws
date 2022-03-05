@@ -184,16 +184,22 @@ Run terraform commands one by one
     
 Once Airflow is up and running, we can now proceed to the most exciting part of the project.
 
-At this time, we need to individually trigger the dags available on Airflow in order to execute the intended operations in them.
+The initialisation DAGs (`init_?_*_dag`) are interdependent. In essence, each DAG wait the success run of its predecessor before starting its tasks. 
+For instance, `init_1_spark_emr_dag` will not be started until `init_0_ingestionto_s3_dag` is complete successfully.
+In order to trigger these DAGs, please enable the 4 of them _simultaneously_.
 
-To start with, enable the `init_0_ingestion_to_s3_dag`. Once it's successfully completed, enable the next dag `init_1_spark_emr_dag`. Then one by one, enable the DAGS until the `proc_3_s3_ro_redshift_dag`.
+The processor DAGs (`proc_?_*_dag`) on the other hand, needs to be started individually. 
+__It is necessary to wait for 4 initialisation DAGs to complete before starting the processor ones__.
+To run these last 3 DAGs, please enable the `proc_0_ingestion_to_s3_dag`, wait for it to finish its tasks before enabling the next DAG: `proc_1_spark_emr_dag`.
+Likewise, it is necessary to wait unti the end of `proc_1_spark_emr_dag` process before enabling the last DAG: `proc_2_s3_to_redshift_dag` 
+
 
 The following screenshot shows a success run of the first DAG.
 
 ![Ingestion DAG (init_0_ingestion_to_s3_dag)](/images/dags/init_0.png "Ingestion DAG in the Graph view")
 
 
-After all dags operations, we now move to Metabase to visualise the data. 
+After all dags operations, we can now move to Metabase to visualise the data. 
 
 ### 7. Visualise data on Metabase
     
@@ -216,4 +222,8 @@ The following screenshot displays a part of our final dashboard which clearly sh
 ## Project limitations
 ### Manual DAGs triggering
 Up to this point, the DAGS need to be triggered manually one by one. This can be an issue if we would like to run batch processing on a regular basis like hourly or daily.
-One possible solution might be to tie these DAGS together by adding dependencies between them. (Ongoing work)
+One possible solution might be to tie these DAGS together by adding dependencies between them.
+
+[Update] This issue has been fixed in the initialisation DAGs by adding `ExternalTaskSensor` operators which allow DAGs to wait for their predecessors to finish before starting their tasks.
+
+Also, in order to run the processor DAGs (`proc_?_*_dag`) periodically in the future, we can simply replace their `schedule_interval` values by a cron expression (e.g. `"55 23 * * 2"`). 

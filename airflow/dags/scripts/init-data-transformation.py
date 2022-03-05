@@ -80,6 +80,11 @@ perc_missing_values.show()
 # drop columns where missing values are more than 70%
 
 weather= weather.drop('precipprob', 'snow', 'snowdepth')
+
+if 'severerisk' in weather.columns:
+    weather= weather.drop('severerisk')
+
+
 weather.columns
 
 weather= weather.repartition(10)

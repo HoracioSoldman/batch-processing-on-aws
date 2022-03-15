@@ -63,13 +63,30 @@ df_processed_stations.createOrReplaceTempView('station')
 
 # we keep all the stations which are not found in the temp view station table
 additional_stations= spark.sql('''
-select distinct(start_station) as station_id, `StartStation Name` as station_name 
-from journey 
-where start_station not in (select station_id from station)
+with station_ids as (
+    select 
+        station_id
+    from
+        station
+)
+
+select 
+    distinct(start_station) as station_id, 
+    `StartStation Name` as station_name 
+from 
+    journey
+where 
+    start_station not in (table station_ids)
+
 union
-select distinct(end_station) as station_id, `EndStation Name` as station_name 
-from journey 
-where end_station not in (select station_id from station)
+
+select 
+    distinct(end_station) as station_id, 
+    `EndStation Name` as station_name 
+from 
+    journey
+where 
+    end_station not in (table station_ids)
 ''')
 additional_stations.show()
 

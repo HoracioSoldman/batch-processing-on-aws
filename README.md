@@ -222,4 +222,4 @@ We can now connect our Redshift database to this platform and visualise the data
 
 The following screenshot displays a part of our final dashboard which clearly shows some useful insights about bicycle rides in different dimensions.
 
-![Final Dashboard](/images/dashboard.png "The final dashboard on Metabase")
+![Final Dashboard](/images/final-dashboard.png "The final dashboard on Metabase")

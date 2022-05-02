@@ -30,7 +30,7 @@ The following diagram illustrates a high-level structure of the pipeline where d
 
 
 ## The Goal
-The end goal of the current project is to preprocess the data on AWS platform and get useful insights from it. We can learn more from the data by responding some of the following business questions on the final dashboard.
+The end goal of the current project is to preprocess the data on AWS platform and get useful insights from it. We can learn more from the data by responding to some of the following business questions on the final dashboard.
 
 - At what time or which hour of the day has the most active rental in average? 
 
@@ -57,7 +57,7 @@ We are going to build a **Star Schema** which comprises one fact and multiple di
 The Entity Relational Diagram (ERD) for the final Data Warehouse is represented in the following image:
 ![The ERD](/images/CyclingERD.png "ERD edited from dbdiagram.io")
 
-Several columns from both weather and journey data will be removed after data transformation. Also, we will add dimension table dim_datetime which will contain the reference for all datetime-related columns.
+In the transformation phase, several columns from both weather and journey data will be removed. Also, we will add dimension table dim_datetime which will contain the reference for all datetime-related columns.
 
 The given schema will facilitate the exploration of the whole data in order to answer relevant business questions about them.
 
@@ -95,9 +95,15 @@ We need to scale our EMR cluster nodes either horizontally or both vertically an
 ## Running the project
 ### 1. Requirements
 In order to run the project smoothly, a few requirements should be met:
-- AWS account with sufficient permissions to access and work on S3, Redshift, and EMR.
+- AWS account with sufficient permissions to access and work on S3, Redshift, and EMR. 
+To do so: 
+    *   Go to [IAM](https://console.aws.amazon.com/iam/home) in AWS console.
+    *   Create a new user
+    *   Add permissions to that new user: `AmazonS3FullAccess`, `AmazonRedshiftFullAccess`, `AdministratorAccess`, `AmazonEMRFullAccessPolicy_v2`, `AmazonEMRServicePolicy_v2`, `AmazonEC2FullAccess`.
+    *   In the "Security credentials" tab, create access key and download the `.csv` file.  
 
-- It is also necessary to have the AWS account preconfigured (i.e having `~/.aws/credentials` and `~/.aws/config` available in your local environment)
+- It is also necessary to have the AWS account preconfigured (i.e having `~/.aws/credentials` and `~/.aws/config` available in your local environment). [This AWS Doc](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/setup-credentials.html) shows the essential steps to setup local environment with AWS.
+
 
 - Docker and Docker Compose, preinstalled in your local environment. Otherwise, they can be installed from [Get Docker](https://docs.docker.com/get-docker/).
 
@@ -186,7 +192,7 @@ Once Airflow is up and running, we can now proceed to the most exciting part of 
 
 The initialisation DAGs (`init_?_*_dag`) are interdependent. In essence, each DAG wait the success run of its predecessor before starting its tasks. 
 For instance, `init_1_spark_emr_dag` will not be started until `init_0_ingestionto_s3_dag` is complete successfully.
-In order to trigger these DAGs, please enable the 4 of them _simultaneously_.
+In order to trigger these DAGs, please enable the 4 of them _SIMULTANEOUSLY_.
 
 The processor DAGs (`proc_?_*_dag`) on the other hand, needs to be started individually. 
 __It is necessary to wait for 4 initialisation DAGs to complete before starting the processor ones__.
@@ -217,13 +223,3 @@ We can now connect our Redshift database to this platform and visualise the data
 The following screenshot displays a part of our final dashboard which clearly shows some useful insights about bicycle rides in different dimensions.
 
 ![Final Dashboard](/images/dashboard.png "The final dashboard on Metabase")
-
-
-## Project limitations
-### Manual DAGs triggering
-Up to this point, the DAGS need to be triggered manually one by one. This can be an issue if we would like to run batch processing on a regular basis like hourly or daily.
-One possible solution might be to tie these DAGS together by adding dependencies between them.
-
-[Update] This issue has been fixed in the initialisation DAGs by adding `ExternalTaskSensor` operators which allow DAGs to wait for their predecessors to finish before starting their tasks.
-
-Also, in order to run the processor DAGs (`proc_?_*_dag`) periodically in the future, we can simply replace their `schedule_interval` values by a cron expression (e.g. `"55 23 * * 2"`). 
